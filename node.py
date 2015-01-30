@@ -132,6 +132,12 @@ class NodeTree():
                 nodelist = branch['nodelist']
                 self.nodeposition[nodeip].append(self._nodetrace(nodeip, nodelist))
 
+    def distsearch(self,ip):
+        for branch in self.nodetree:
+            for node in branch['nodelist']:
+                if ip in node.distips:
+                    node.show()
+
     def show_top(self):
         nodelist = self.nodetree[-1]['nodelist']
         [node.show() for node in nodelist]
