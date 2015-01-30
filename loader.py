@@ -20,6 +20,6 @@ def load(fname):
     nodetree = NodeTree()
     for nodeip in datadict.keys():
         node = Node(nodeips=[nodeip], distips=datadict[nodeip])
-        nodetree.append(node)
+        nodetree.addnode(node)
 
     return nodetree

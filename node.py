@@ -76,15 +76,29 @@ class Node():
     def branch(self):
         return self.nodes
 
+    def nodelist(self):
+        nodelist = []
+
+        if len(self.nodes) == 0:
+            nodelist.append(self)
+        else:
+            for node in self.nodes:
+                nodelist += node.nodelist()
+
+        return nodelist
+
 
 class NodeTree():
-    def __init__(self):
-        self.nodetree = [{'distance': 0, 'nodelist': []}]
+    def __init__(self, distance=0, nodelist=[]):
+        self.nodetree = [{'distance': distance, 'nodelist': nodelist}]
 
-    def append(self, node):
+    def addnode(self, node):
         self.nodetree[0]['nodelist'].append(node)
 
-    def _clustering(self, nodelist):
+    '''
+    Funtions for Large Data (Pre Analysis)
+    '''
+    def _rough_clustering(self, nodelist):
         num = len(nodelist)
         mindist = float("inf")
         mini = None
@@ -92,9 +106,13 @@ class NodeTree():
         for i in range(0, num):
             for j in range(i + 1, num):
                 dist = nodelist[i].distance(nodelist[j])
-                if mindist > dist:
+                if not dist == float("inf"):
                     (mini, minj) = (i, j)
                     mindist = dist
+                    break
+            else:
+                continue
+            break
 
         if not mindist == float("inf"):
             nodelist_out = copy.copy(nodelist)
@@ -106,14 +124,53 @@ class NodeTree():
         else:
             return None
 
-    def clustering(self):
+    def rough_clustering(self):
+        roughdict = copy.copy(self.nodetree[0]['nodelist'])
         while True:
-            nexttree = self._clustering(self.nodetree[-1]['nodelist'])
+            nextnodelistdict = self._rough_clustering(roughdict)
+            if nextnodelistdict is None:
+                break
+            roughdict = nextnodelistdict['nodelist']
 
-            if nexttree is None:
+        return roughdict
+
+    '''
+    Funtions for Small Data (Detail Analysis)
+    '''
+    def _clustering(self, nodelist):
+        num = len(nodelist)
+        mindist = float("inf")
+        mini = None
+        minj = None
+        for i in range(0, num):
+            for j in range(i + 1, num):
+                dist = nodelist[i].distance(nodelist[j])
+                if mindist > dist:
+                    (mini, minj) = (i, j)
+                    mindist = dist
+                    if dist == 0:
+                        break
+            else:
+                continue
+            break
+        if not mindist == float("inf"):
+            nodelist_out = copy.copy(nodelist)
+            nodej = nodelist_out.pop(minj)
+            nodei = nodelist_out.pop(mini)
+            nodeij = nodei.merge(nodej)
+            nodelist_out.append(nodeij)
+            return {'distance': mindist, 'nodelist': nodelist_out}
+        else:
+            return None
+
+    def clustering(self):
+        while len(self.nodetree[-1]['nodelist']) > 1:
+            nextnodelist = self._clustering(self.nodetree[-1]['nodelist'])
+
+            if nextnodelist is None:
                 break
             else:
-                self.nodetree.append(nexttree)
+                self.nodetree.append(nextnodelist)
 
         self.nodetrace()
 
@@ -128,13 +185,13 @@ class NodeTree():
             nodeip = node.nodeips[0]
             self.nodeposition[nodeip] = []
 
-            for branch in self.nodetree:
-                nodelist = branch['nodelist']
+            for nodelistdict in self.nodetree:
+                nodelist = nodelistdict['nodelist']
                 self.nodeposition[nodeip].append(self._nodetrace(nodeip, nodelist))
 
-    def distsearch(self,ip):
-        for branch in self.nodetree:
-            for node in branch['nodelist']:
+    def distsearch(self, ip):
+        for nodelistdict in self.nodetree:
+            for node in nodelistdict['nodelist']:
                 if ip in node.distips:
                     node.show()
 
