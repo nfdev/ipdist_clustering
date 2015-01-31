@@ -90,86 +90,43 @@ class Node():
 
 
 class NodeTree():
-    def __init__(self, distance=0, nodelist=[]):
-        self.nodelists = [{'distance': distance, 'nodelist': nodelist}]
+    def __init__(self, distance=0, nodelist=[], isolatelist=[]):
+        self.distance = distance
+        self.nodelist = nodelist
+        self.isolatelist = isolatelist
 
     def addnode(self, node):
-        self.nodelists[0]['nodelist'].append(node)
-
-    def rough_clustering(self):
-        nodelist = copy.copy(self.nodelists[0]['nodelist'])
-        isolatelist = []
-
-        while len(nodelist) >= 2:
-            node1 = nodelist.pop(0)
-            nodelist_tmp = []
-            while len(nodelist) >= 1:
-                node2 = nodelist.pop(0)
-                dist = node1.distance(node2)
-
-                if not dist == float("inf"):
-                    node3 = node1.merge(node2)
-                    nodelist = [node3] + nodelist_tmp + nodelist
-                    break
-                else:
-                    nodelist_tmp.append(node2)
-
-                sys.stderr.write("\rrough_clustering| %05d-%05d %f"
-                                 % (len(isolatelist),
-                                    len(nodelist) + len(nodelist_tmp), dist))
-            else:
-                isolatelist.append(node1)
-                nodelist = nodelist_tmp
-        else:
-            isolatelist += nodelist
-
-        print ""
-        return isolatelist
+        self.nodelist.append(node)
 
     def clustering(self):
-        isolatelist = []
-        nodelist = copy.copy(self.nodelists[0]['nodelist'])
+        nodelist = copy.copy(self.nodelist)
+        self.isolatelistd = []
+        (minnode1, minnode2) = (None, None)
 
-        while len(self.nodelists[-1]['nodelist']) > 1:
-            num = len(nodelist)
+        while len(nodelist) >= 2:
+            node1 = nodelist.pop()
             mindist = float("inf")
-            minnode1 = None
-            minnode2 = None
-            isolated = False
-
-            for i in range(0, num):
-                for j in range(i + 1, num):
-                    dist = nodelist[i].distance(nodelist[j])
-                    if mindist > dist:
-                        (minnode1, minnode2) = (nodelist[i], nodelist[j])
-                        mindist = dist
-                    if dist == 0:
-                        break
-                else:
-                    if i is 1:
-                        isolated = (mindist == float("inf"))
-                    continue
-                break
-
-            if isolated:
-                isolatelist.append(nodelist.pop(0))
-
-            if not mindist == float("inf"):
-                node1 = nodelist.pop(nodelist.index(minnode1))
-                node2 = nodelist.pop(nodelist.index(minnode2))
-                node3 = node1.merge(node2)
-                nodelist.insert(0, node3)
-                self.nodelists.append(
-                    {'distance': mindist, 'nodelist': nodelist + isolatelist})
+            nodelist_tmp = []
+            while len(nodelist) >= 1:
+                node2 = nodelist.pop()
+                dist = node1.distance(node2)
+                sys.stderr.write("\r %05d-%05d %f" % (len(self.isolatelistd), len(nodelist), dist))
+                if not dist < mindist:
+                    mindist = dist
+                    (minnode1, minnode2) = (node1, node2)
+                elif mindist == 0:
+                    break
+                nodelist_tmp.append(node2)
             else:
-                break
+                self.isolatelistd.append(node1)
+                nodelist = nodelist_tmp
+        else:
+                    node3 = node1.merge(node2)
+                    nodelist = nodelist_tmp + nodelist + [node3]
+                    break
+            self.isolatelistd += nodelist
 
-            sys.stderr.write("\rclustering| %05d-%05d %f"
-                             % (len(self.nodelists),
-                                len(nodelist), mindist))
-        print ""
-
-        self.nodetrace()
+        return self.isolatelistd
 
     def _nodetrace(self, nodeip, nodelist):
         for node in nodelist:
@@ -178,51 +135,78 @@ class NodeTree():
 
     def nodetrace(self):
         self.nodeposition = {}
-        for node in self.nodelists[0]['nodelist']:
+        for node in self.nodetree[0]['nodelist']:
             nodeip = node.nodeips[0]
             self.nodeposition[nodeip] = []
 
-            for nodelistdict in self.nodelists:
+            for nodelistdict in self.nodetree:
                 nodelist = nodelistdict['nodelist']
                 self.nodeposition[nodeip].append(self._nodetrace(nodeip, nodelist))
 
     def distsearch(self, ip):
-        for nodelistdict in self.nodelists:
+        for nodelistdict in self.nodetree:
             for node in nodelistdict['nodelist']:
                 if ip in node.distips:
                     node.show()
 
     def show_top(self):
-        nodelist = self.nodelists[-1]['nodelist']
+        nodelist = self.nodetree[-1]['nodelist']
         [node.show() for node in nodelist]
 
     def show_hight(self, hight):
-        level = len(self.nodelists)
+        level = len(self.nodetree)
         while level > 0:
             level -= 1
-            distance = self.nodelists[level]['distance']
+            distance = self.nodetree[level]['distance']
             if distance < hight:
-                nodelist = self.nodelists[level]['nodelist']
+                nodelist = self.nodetree[level]['nodelist']
                 [node.show() for node in nodelist]
                 break
 
     def show_level(self, level):
-        nodelist = self.nodelists[level]['nodelist']
+        nodelist = self.nodetree[level]['nodelist']
         [node.show() for node in nodelist]
 
     def branch_top(self):
-        return self.nodelists[-1]['nodelist']
+        return self.nodetree[-1]['nodelist']
 
     def branch_hight(self, hight):
-        level = len(self.nodelists)
+        level = len(self.nodetree)
         while level > 0:
             level -= 1
-            distance = self.nodelists[level]['distance']
+            distance = self.nodetree[level]['distance']
             if distance < hight:
-                return self.nodelists[level]['nodelist']
+                return self.nodetree[level]['nodelist']
 
     def branch_level(self, level):
-        return self.nodelists[level]['nodelist']
+        return self.nodetree[level]['nodelist']
+
+
+class RoughNodeTree(NodeTree):
+    def clustering(self):
+        nodelist = copy.copy(self.nodelist)
+        isolatelist = []
+
+        while len(nodelist) >= 2:
+            node1 = nodelist.pop()
+            nodelist_tmp = []
+            while len(nodelist) >= 1:
+                node2 = nodelist.pop()
+                dist = node1.distance(node2)
+                sys.stderr.write("\r %05d-%05d %f" % (len(isolatelist), len(nodelist), dist))
+                if not dist == float("inf"):
+                    node3 = node1.merge(node2)
+                    nodelist = nodelist_tmp + nodelist + [node3]
+                    break
+                else:
+                    nodelist_tmp.append(node2)
+            else:
+                isolatelistd.append(node1)
+                nodelist = nodelist_tmp
+        else:
+            isolatelistd += nodelist
+
+        return NodeTree(isolatelist=self.isolatelistd)
 
 if __name__ == '__main__':
     from loader import load

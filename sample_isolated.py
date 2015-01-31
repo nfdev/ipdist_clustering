@@ -3,7 +3,7 @@
 import loader
 
 
-nodetree = loader.load('./data/sample.dat')
+nodetree = loader.load('./data/sample_isolated.dat')
 
 nodetree.clustering()
 nodetree.show_top()
